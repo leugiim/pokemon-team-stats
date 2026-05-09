@@ -24,7 +24,7 @@ export interface Match {
   id: string
   teamId: string
   date: number
-  result: 'win' | 'loss'
+  result: 'win' | 'loss' | 'ongoing'
   // Equipo propio
   selection: string[]   // 4 nombres del equipo propio
   lead: string[]        // 2 nombres del lead propio

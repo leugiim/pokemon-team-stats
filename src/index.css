@@ -127,7 +127,38 @@ body {
 
 /* Rival inputs */
 .rival-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-.rival-input { }
+.rival-input { width: 100%; }
+
+/* Pokemon autocomplete */
+.pokemon-input-wrap { position: relative; }
+.pokemon-input-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  list-style: none;
+  z-index: 50;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.pokemon-input-option {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.pokemon-input-option.highlighted,
+.pokemon-input-option:hover { background: var(--bg-card-hover); color: var(--text); }
+.pokemon-input-more {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  font-style: italic;
+}
 
 /* ========================
    Pokemon selector (botones)
@@ -333,8 +364,9 @@ body {
   border-radius: var(--radius);
   padding: 0.85rem 1rem;
 }
-.match-item.win { border-left-color: var(--win); }
-.match-item.loss { border-left-color: var(--loss); }
+.match-item--win { border-left-color: var(--win); }
+.match-item--loss { border-left-color: var(--loss); }
+.match-item--ongoing { border-left-color: #60a5fa; }
 .match-result-badge {
   font-size: 0.85rem;
   font-weight: 800;
@@ -347,8 +379,10 @@ body {
   flex-shrink: 0;
   margin-top: 2px;
 }
-.match-item.win .match-result-badge { background: rgba(74,222,128,.15); color: var(--win); }
-.match-item.loss .match-result-badge { background: rgba(248,113,113,.15); color: var(--loss); }
+.match-item--win .match-result-badge { background: rgba(74,222,128,.15); color: var(--win); }
+.match-item--loss .match-result-badge { background: rgba(248,113,113,.15); color: var(--loss); }
+.match-item--ongoing .match-result-badge { background: rgba(96,165,250,.15); color: #60a5fa; }
+.active-ongoing { border-color: #60a5fa !important; color: #60a5fa !important; background: rgba(96,165,250,.08) !important; }
 .match-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
 .match-date { font-size: 0.78rem; color: var(--text-muted); }
 .match-detail { font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }

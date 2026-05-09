@@ -19,8 +19,9 @@ interface Props {
 }
 
 function winrate(matches: Match[]) {
-  if (matches.length === 0) return null
-  return Math.round((matches.filter(m => m.result === 'win').length / matches.length) * 100)
+  const decided = matches.filter(m => m.result !== 'ongoing')
+  if (decided.length === 0) return null
+  return Math.round((decided.filter(m => m.result === 'win').length / decided.length) * 100)
 }
 
 function formatDate(ts: number) {
@@ -93,13 +94,14 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   if (!team) return <div className="view"><p>Equipo no encontrado.</p></div>
 
   const wr = winrate(matches)
-  const total = matches.length
-  const wins = matches.filter(m => m.result === 'win').length
+  const decided = matches.filter(m => m.result !== 'ongoing')
+  const total = decided.length
+  const wins = decided.filter(m => m.result === 'win').length
 
-  // Stats por pokemon en selección
+  // Stats por pokemon en selección (solo partidas decididas)
   const pokeStats = team.pokemon.map(p => {
     const pokeName = p.nickname || p.name
-    const inSelection = matches.filter(m => m.selection.includes(pokeName))
+    const inSelection = decided.filter(m => m.selection.includes(pokeName))
     const pokeWins = inSelection.filter(m => m.result === 'win').length
     return {
       pokemon: p,
@@ -109,9 +111,9 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
     }
   }).sort((a, b) => b.times - a.times)
 
-  // Stats por lead
+  // Stats por lead (solo partidas decididas)
   const leadMap = new Map<string, { wins: number; total: number }>()
-  matches.forEach(m => {
+  decided.forEach(m => {
     if (m.lead.length !== 2) return
     const key = [...m.lead].sort().join(' + ')
     const cur = leadMap.get(key) ?? { wins: 0, total: 0 }
@@ -260,8 +262,8 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
         ) : (
           <ul className="match-list">
             {matches.map(m => (
-              <li key={m.id} className={`match-item ${m.result}`}>
-                <div className="match-result-badge">{m.result === 'win' ? 'V' : 'D'}</div>
+              <li key={m.id} className={`match-item match-item--${m.result}`}>
+                <div className="match-result-badge">{m.result === 'win' ? 'V' : m.result === 'loss' ? 'D' : '·'}</div>
                 <div className="match-info">
                   <div className="match-date">{formatDate(m.date)}</div>
                   {(() => {

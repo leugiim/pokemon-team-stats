@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Team, Match } from '../types'
 import { getTeams, getMatch, saveMatch, generateId } from '../store'
 import { pokemonIconUrl } from '../sprites'
+import { getPokemonNames } from '../utils/pokemonNames'
+import PokemonInput from '../components/PokemonInput'
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = 'none'
@@ -17,7 +19,10 @@ interface Props {
 export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
   const [team, setTeam] = useState<Team | null>(null)
   const [originalMatch, setOriginalMatch] = useState<Match | null>(null)
-  const [result, setResult] = useState<'win' | 'loss' | ''>('')
+  const [result, setResult] = useState<'win' | 'loss' | 'ongoing' | ''>('')
+  const [pokemonNames, setPokemonNames] = useState<string[]>([])
+
+  useEffect(() => { getPokemonNames().then(setPokemonNames) }, [])
   const [selection, setSelection] = useState<string[]>([])
   const [lead, setLead] = useState<string[]>([])
   const [rivalTeam, setRivalTeam] = useState<string[]>(['', '', '', '', '', ''])
@@ -102,7 +107,7 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
 
   function handleSave() {
     setError('')
-    if (!result) { setError('Indica el resultado de la partida.'); return }
+    if (!result) { setError('Indica el resultado o márcala como en juego.'); return }
     if (selection.length !== 4) { setError('Selecciona exactamente 4 Pokemon propios.'); return }
     if (lead.length !== 2) { setError('Indica el lead propio (2 Pokemon).'); return }
 
@@ -134,18 +139,9 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
       <section className="form-section">
         <label className="form-label">Resultado</label>
         <div className="result-buttons">
-          <button
-            className={`btn btn-result ${result === 'win' ? 'active-win' : ''}`}
-            onClick={() => setResult('win')}
-          >
-            Victoria
-          </button>
-          <button
-            className={`btn btn-result ${result === 'loss' ? 'active-loss' : ''}`}
-            onClick={() => setResult('loss')}
-          >
-            Derrota
-          </button>
+          <button className={`btn btn-result ${result === 'win' ? 'active-win' : ''}`} onClick={() => setResult('win')}>Victoria</button>
+          <button className={`btn btn-result ${result === 'loss' ? 'active-loss' : ''}`} onClick={() => setResult('loss')}>Derrota</button>
+          <button className={`btn btn-result ${result === 'ongoing' ? 'active-ongoing' : ''}`} onClick={() => setResult('ongoing')}>En juego</button>
         </div>
       </section>
 
@@ -197,13 +193,12 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
         </label>
         <div className="rival-inputs">
           {rivalTeam.map((val, i) => (
-            <input
+            <PokemonInput
               key={i}
-              className="form-input rival-input"
-              type="text"
-              placeholder={`Pokemon ${i + 1}`}
               value={val}
-              onChange={e => updateRivalSlot(i, e.target.value)}
+              placeholder={`Pokemon ${i + 1}`}
+              allNames={pokemonNames}
+              onChange={v => updateRivalSlot(i, v)}
             />
           ))}
         </div>
