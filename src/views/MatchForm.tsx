@@ -52,9 +52,11 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
   const rivalFilled = rivalTeam.filter(n => n.trim() !== '')
 
   function toggleSelection(name: string) {
-    setLead([]) // reset lead on selection change
     setSelection(prev => {
-      if (prev.includes(name)) return prev.filter(n => n !== name)
+      if (prev.includes(name)) {
+        setLead(l => l.filter(n => n !== name))
+        return prev.filter(n => n !== name)
+      }
       if (prev.length >= 4) return prev
       return [...prev, name]
     })
@@ -69,9 +71,11 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
   }
 
   function toggleRivalSelection(name: string) {
-    setRivalLead([])
     setRivalSelection(prev => {
-      if (prev.includes(name)) return prev.filter(n => n !== name)
+      if (prev.includes(name)) {
+        setRivalLead(l => l.filter(n => n !== name))
+        return prev.filter(n => n !== name)
+      }
       if (prev.length >= 4) return prev
       return [...prev, name]
     })
