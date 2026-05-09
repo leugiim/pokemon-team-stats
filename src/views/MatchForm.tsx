@@ -204,7 +204,7 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
           ))}
         </div>
 
-        {rivalFilled.length >= 4 && (
+        {rivalFilled.length >= 2 && (
           <>
             <label className="form-label" style={{ marginTop: '1rem' }}>
               Selección rival{' '}
@@ -224,7 +224,7 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
           </>
         )}
 
-        {rivalSelection.length === 4 && (
+        {rivalSelection.length >= 2 && (
           <>
             <label className="form-label" style={{ marginTop: '1rem' }}>
               Lead rival{' '}
