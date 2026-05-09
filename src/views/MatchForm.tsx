@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Team, Match } from '../types'
-import { getTeams, saveMatch, generateId } from '../store'
+import { getTeams, getMatch, saveMatch, generateId } from '../store'
 import { pokemonIconUrl } from '../sprites'
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
@@ -9,12 +9,14 @@ function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
 
 interface Props {
   teamId: string
+  matchId?: string
   onBack: () => void
   onSaved: () => void
 }
 
-export default function MatchForm({ teamId, onBack, onSaved }: Props) {
+export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
   const [team, setTeam] = useState<Team | null>(null)
+  const [originalMatch, setOriginalMatch] = useState<Match | null>(null)
   const [result, setResult] = useState<'win' | 'loss' | ''>('')
   const [selection, setSelection] = useState<string[]>([])
   const [lead, setLead] = useState<string[]>([])
@@ -27,7 +29,22 @@ export default function MatchForm({ teamId, onBack, onSaved }: Props) {
   useEffect(() => {
     const t = getTeams().find(t => t.id === teamId) ?? null
     setTeam(t)
-  }, [teamId])
+
+    if (matchId) {
+      const m = getMatch(matchId)
+      if (m) {
+        setOriginalMatch(m)
+        setResult(m.result)
+        setSelection(m.selection)
+        setLead(m.lead)
+        const slots = [...m.rivalTeam, '', '', '', '', '', ''].slice(0, 6)
+        setRivalTeam(slots)
+        setRivalSelection(m.rivalSelection)
+        setRivalLead(m.rivalLead)
+        setNotes(m.notes)
+      }
+    }
+  }, [teamId, matchId])
 
   if (!team) return null
 
@@ -86,9 +103,9 @@ export default function MatchForm({ teamId, onBack, onSaved }: Props) {
     if (lead.length !== 2) { setError('Indica el lead propio (2 Pokemon).'); return }
 
     const match: Match = {
-      id: generateId(),
+      id: originalMatch?.id ?? generateId(),
       teamId,
-      date: Date.now(),
+      date: originalMatch?.date ?? Date.now(),
       result,
       selection,
       lead,
@@ -106,7 +123,7 @@ export default function MatchForm({ teamId, onBack, onSaved }: Props) {
     <div className="view">
       <header className="view-header">
         <button className="btn btn-back" onClick={onBack}>← Volver</button>
-        <h1>Nueva partida — {team.name}</h1>
+        <h1>{matchId ? 'Editar partida' : 'Nueva partida'} — {team.name}</h1>
       </header>
 
       {/* Resultado */}
@@ -246,7 +263,7 @@ export default function MatchForm({ teamId, onBack, onSaved }: Props) {
 
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={onBack}>Cancelar</button>
-        <button className="btn btn-primary" onClick={handleSave}>Guardar partida</button>
+        <button className="btn btn-primary" onClick={handleSave}>{matchId ? 'Guardar cambios' : 'Guardar partida'}</button>
       </div>
     </div>
   )

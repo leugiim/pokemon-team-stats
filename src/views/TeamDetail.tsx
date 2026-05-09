@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Team, Match } from '../types'
-import { getTeams, getMatchesByTeam, deleteMatch } from '../store'
+import { getTeams, getMatchesByTeam, deleteMatch, saveMatch } from '../store'
 import PokemonCard from '../components/PokemonCard'
 import { pokemonIconUrl, itemIconUrl } from '../sprites'
+import { matchToJson, historyToJson, jsonToMatch, jsonToHistory } from '../utils/matchIO'
+import IOModal from '../components/IOModal'
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = 'none'
@@ -13,6 +15,7 @@ interface Props {
   onBack: () => void
   onEdit: () => void
   onAddMatch: () => void
+  onEditMatch: (matchId: string) => void
 }
 
 function winrate(matches: Match[]) {
@@ -26,9 +29,15 @@ function formatDate(ts: number) {
   })
 }
 
-export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch }: Props) {
+type ModalState =
+  | { mode: 'export'; title: string; content: string }
+  | { mode: 'import'; title: string; onImport: (text: string) => void }
+  | null
+
+export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditMatch }: Props) {
   const [team, setTeam] = useState<Team | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
+  const [modal, setModal] = useState<ModalState>(null)
 
   function reload() {
     const t = getTeams().find(t => t.id === teamId) ?? null
@@ -42,6 +51,43 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch }: Props
     if (!confirm('¿Eliminar esta partida?')) return
     deleteMatch(id)
     reload()
+  }
+
+  function openExportMatch(match: Match) {
+    setModal({ mode: 'export', title: 'Exportar partida', content: matchToJson(match) })
+  }
+
+  function openExportHistory(ms: Match[]) {
+    setModal({ mode: 'export', title: 'Exportar historial', content: historyToJson(ms) })
+  }
+
+  function openImportMatch() {
+    setModal({
+      mode: 'import',
+      title: 'Importar partida',
+      onImport: (text) => {
+        const match = jsonToMatch(text, teamId)
+        if (!match) { alert('JSON inválido o formato incorrecto.'); return }
+        saveMatch(match)
+        setModal(null)
+        reload()
+      },
+    })
+  }
+
+  function openImportHistory() {
+    setModal({
+      mode: 'import',
+      title: 'Importar historial',
+      onImport: (text) => {
+        const imported = jsonToHistory(text, teamId)
+        if (!imported) { alert('JSON inválido o formato incorrecto.'); return }
+        if (!confirm(`Se importarán ${imported.length} partidas. ¿Continuar?`)) return
+        imported.forEach(m => saveMatch(m))
+        setModal(null)
+        reload()
+      },
+    })
   }
 
   if (!team) return <div className="view"><p>Equipo no encontrado.</p></div>
@@ -198,7 +244,17 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch }: Props
 
       {/* Historial */}
       <section className="section">
-        <h2 className="section-title">Historial de partidas</h2>
+        <div className="section-header">
+          <h2 className="section-title">Historial de partidas</h2>
+          <div className="io-actions">
+            <button className="btn btn-secondary btn-sm" onClick={openImportMatch}>Importar partida</button>
+            {matches.length > 0 && <>
+              <button className="btn btn-secondary btn-sm" onClick={openImportHistory}>Importar historial</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => openExportHistory(matches)}>Exportar historial</button>
+            </>}
+          </div>
+        </div>
+
         {matches.length === 0 ? (
           <p className="text-muted">No hay partidas todavía.</p>
         ) : (
@@ -208,56 +264,102 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch }: Props
                 <div className="match-result-badge">{m.result === 'win' ? 'V' : 'D'}</div>
                 <div className="match-info">
                   <div className="match-date">{formatDate(m.date)}</div>
-                  <div className="match-detail">
-                    <span className="match-label">Selección:</span>{' '}
-                    <span className="match-poke-row">
-                      {m.selection.map(name => (
-                        <span key={name} className="match-poke-chip">
-                          <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-xs" onError={hideOnError} />
-                          {name}
+                  {(() => {
+                    const ownBenched = team.pokemon
+                      .map(p => p.nickname || p.name)
+                      .filter(n => !m.selection.includes(n))
+                    return (
+                      <div className="match-detail">
+                        <span className="match-label">Selección:</span>{' '}
+                        <span className="match-poke-row">
+                          {m.selection.map(name => (
+                            <span key={name} title={name} className={`match-poke-icon ${m.lead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
+                              <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                            </span>
+                          ))}
+                          {ownBenched.length > 0 && (
+                            <>
+                              <span className="match-bench-sep" />
+                              {ownBenched.map(name => (
+                                <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
+                                  <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                                </span>
+                              ))}
+                            </>
+                          )}
                         </span>
-                      ))}
-                    </span>
-                  </div>
-                  <div className="match-detail">
-                    <span className="match-label">Lead:</span>{' '}
-                    <span className="match-poke-row">
-                      {m.lead.map(name => (
-                        <span key={name} className="match-poke-chip match-poke-chip--lead">
-                          <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-xs" onError={hideOnError} />
-                          {name}
+                      </div>
+                    )
+                  })()}
+                  {m.rivalSelection.length > 0 && (() => {
+                    const benched = m.rivalTeam.filter(n => !m.rivalSelection.includes(n))
+                    return (
+                      <div className="match-detail">
+                        <span className="match-label">Rival:</span>{' '}
+                        <span className="match-poke-row">
+                          {m.rivalSelection.map(name => (
+                            <span key={name} title={name} className={`match-poke-icon ${m.rivalLead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
+                              <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                            </span>
+                          ))}
+                          {benched.length > 0 && (
+                            <>
+                              <span className="match-bench-sep" />
+                              {benched.map(name => (
+                                <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
+                                  <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                                </span>
+                              ))}
+                            </>
+                          )}
                         </span>
-                      ))}
-                    </span>
-                  </div>
-                  {m.rivalTeam.length > 0 && (
+                      </div>
+                    )
+                  })()}
+                  {m.rivalTeam.length > 0 && m.rivalSelection.length === 0 && (
                     <div className="match-detail">
                       <span className="match-label">Rival:</span>{' '}
                       <span className="match-poke-row">
                         {m.rivalTeam.map(name => (
-                          <span key={name} className={`match-poke-chip ${m.rivalLead.includes(name) ? 'match-poke-chip--lead' : ''}`}>
-                            <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-xs" onError={hideOnError} />
-                            {name}
+                          <span key={name} title={name} className="match-poke-icon">
+                            <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
                           </span>
                         ))}
                       </span>
                     </div>
                   )}
-                  {m.notes && (
-                    <div className="match-notes">{m.notes}</div>
-                  )}
+                  {m.notes && <div className="match-notes">{m.notes}</div>}
                 </div>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleDeleteMatch(m.id)}
-                >
-                  ✕
-                </button>
+                <div className="match-actions">
+                  <button className="btn btn-icon btn-secondary" title="Editar" onClick={() => onEditMatch(m.id)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button className="btn btn-icon btn-secondary" title="Exportar partida" onClick={() => openExportMatch(m)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                  </button>
+                  <button className="btn btn-icon btn-danger" title="Eliminar" onClick={() => handleDeleteMatch(m.id)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {modal && (
+        modal.mode === 'export'
+          ? <IOModal mode="export" title={modal.title} content={modal.content} onClose={() => setModal(null)} />
+          : <IOModal mode="import" title={modal.title} onImport={modal.onImport} onClose={() => setModal(null)} />
+      )}
     </div>
   )
 }

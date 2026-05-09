@@ -46,6 +46,10 @@ export function getMatchesByTeam(teamId: string): Match[] {
   return getMatches().filter(m => m.teamId === teamId)
 }
 
+export function getMatch(id: string): Match | undefined {
+  return getMatches().find(m => m.id === id)
+}
+
 export function saveMatch(match: Match): void {
   const matches = getMatches()
   const idx = matches.findIndex(m => m.id === match.id)

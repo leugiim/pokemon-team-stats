@@ -9,7 +9,7 @@ export type Route =
   | { view: 'create' }
   | { view: 'edit'; teamId: string }
   | { view: 'team'; teamId: string }
-  | { view: 'match'; teamId: string }
+  | { view: 'match'; teamId: string; matchId?: string }
 
 export default function App() {
   const [route, setRoute] = useState<Route>({ view: 'list' })
@@ -41,11 +41,13 @@ export default function App() {
           onBack={() => setRoute({ view: 'list' })}
           onEdit={() => setRoute({ view: 'edit', teamId: route.teamId })}
           onAddMatch={() => setRoute({ view: 'match', teamId: route.teamId })}
+          onEditMatch={matchId => setRoute({ view: 'match', teamId: route.teamId, matchId })}
         />
       )}
       {route.view === 'match' && (
         <MatchForm
           teamId={route.teamId}
+          matchId={route.matchId}
           onBack={() => setRoute({ view: 'team', teamId: route.teamId })}
           onSaved={() => setRoute({ view: 'team', teamId: route.teamId })}
         />
