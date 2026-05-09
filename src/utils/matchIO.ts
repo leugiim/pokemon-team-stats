@@ -5,12 +5,12 @@ type MatchData = Omit<Match, 'id' | 'teamId'>
 
 export function matchToJson(match: Match): string {
   const { id: _id, teamId: _teamId, ...data } = match
-  return JSON.stringify(data, null, 2)
+  return JSON.stringify(data)
 }
 
 export function historyToJson(matches: Match[]): string {
   const data: MatchData[] = matches.map(({ id: _id, teamId: _teamId, ...rest }) => rest)
-  return JSON.stringify(data, null, 2)
+  return JSON.stringify(data)
 }
 
 export function jsonToMatch(json: string, teamId: string): Match | null {
