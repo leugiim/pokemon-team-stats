@@ -1,6 +1,6 @@
 // Convierte nombre a ID de Showdown: minúsculas, conserva guiones, elimina el resto
 function toId(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9-]/g, '')
+  return name.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/mega-/g, 'mega')
 }
 
 // GIF animado (~96px) — para las tarjetas de equipo

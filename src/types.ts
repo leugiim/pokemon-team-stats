@@ -26,6 +26,7 @@ export interface Match {
   date: number
   result: 'win' | 'loss' | 'ongoing'
   // Equipo propio
+  teamRoster: string[]  // 6 nombres del equipo en el momento de la partida
   selection: string[]   // 4 nombres del equipo propio
   lead: string[]        // 2 nombres del lead propio
   // Rival

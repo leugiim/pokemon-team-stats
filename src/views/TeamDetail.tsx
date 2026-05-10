@@ -5,6 +5,8 @@ import PokemonCard from '../components/PokemonCard'
 import { pokemonIconUrl, itemIconUrl } from '../sprites'
 import { matchToJson, historyToJson, jsonToMatch, jsonToHistory } from '../utils/matchIO'
 import IOModal from '../components/IOModal'
+import PokemonInput from '../components/PokemonInput'
+import { getPokemonNames } from '../utils/pokemonNames'
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = 'none'
@@ -39,18 +41,33 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   const [team, setTeam] = useState<Team | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [modal, setModal] = useState<ModalState>(null)
+  const [rivalFilter, setRivalFilter] = useState('')
+  const [ownFilter, setOwnFilter] = useState('')
+  const [resultFilter, setResultFilter] = useState<'win' | 'loss' | 'ongoing' | ''>('')
+  const [page, setPage] = useState(0)
+  const [pokemonNames, setPokemonNames] = useState<string[]>([])
 
   function reload() {
     const t = getTeams().find(t => t.id === teamId) ?? null
     setTeam(t)
-    setMatches(getMatchesByTeam(teamId).sort((a, b) => b.date - a.date))
+    const currentRoster = (t?.pokemon ?? []).map(p => p.nickname || p.name)
+    const loaded = getMatchesByTeam(teamId).sort((a, b) => b.date - a.date)
+    // Migrar partidas sin teamRoster: fijar el equipo actual como roster permanente
+    loaded.forEach(m => {
+      if (!m.teamRoster?.length) {
+        m.teamRoster = currentRoster
+        saveMatch(m)
+      }
+    })
+    setMatches(loaded)
   }
 
   useEffect(() => { reload() }, [teamId])
+  useEffect(() => { getPokemonNames().then(setPokemonNames) }, [])
 
   function handleDeleteMatch(id: string) {
     if (!confirm('¿Eliminar esta partida?')) return
-    deleteMatch(id)
+    deleteMatch(id, teamId)
     reload()
   }
 
@@ -98,13 +115,37 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   const total = decided.length
   const wins = decided.filter(m => m.result === 'win').length
 
-  // Stats por pokemon en selección (solo partidas decididas)
-  const pokeStats = team.pokemon.map(p => {
-    const pokeName = p.nickname || p.name
-    const inSelection = decided.filter(m => m.selection.includes(pokeName))
+  // Normaliza Mega: "Charizard-Mega-X" → "Charizard", "Froslass-Mega" → "Froslass"
+  function megaBase(name: string) {
+    return name.replace(/-Mega(-[A-Za-z])?$/i, '')
+  }
+
+  // Todos los pokemon que alguna vez estuvieron en el equipo (actuales + históricos de partidas)
+  const currentPokeMap = new Map(team.pokemon.map(p => [p.nickname || p.name, p]))
+  const allNamesRaw = [...new Set([
+    ...team.pokemon.map(p => p.nickname || p.name),
+    ...matches.flatMap(m => m.selection),
+  ])]
+
+  // Deduplicar agrupando base + mega como uno solo.
+  // El nombre de display preferido es el del equipo actual; si no, el primero que aparezca.
+  const baseDisplayMap = new Map<string, string>() // base → display name
+  allNamesRaw.forEach(name => {
+    const base = megaBase(name)
+    if (!baseDisplayMap.has(base) || currentPokeMap.has(name)) {
+      baseDisplayMap.set(base, name)
+    }
+  })
+  const allPokeNames = [...baseDisplayMap.values()]
+
+  // Stats por pokemon en selección (solo partidas decididas), agrupando Mega con base
+  const pokeStats = [...baseDisplayMap.entries()].map(([base, displayName]) => {
+    const pokemon = currentPokeMap.get(displayName) ?? null
+    const inSelection = decided.filter(m => m.selection.some(n => megaBase(n) === base))
     const pokeWins = inSelection.filter(m => m.result === 'win').length
     return {
-      pokemon: p,
+      name: displayName,
+      pokemon,
       times: inSelection.length,
       wins: pokeWins,
       wr: inSelection.length > 0 ? Math.round((pokeWins / inSelection.length) * 100) : null,
@@ -170,76 +211,80 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
               </div>
             </div>
 
-            <h3 className="subsection-title">Selección por Pokemon</h3>
-            <table className="stats-table">
-              <thead>
-                <tr>
-                  <th>Pokemon</th>
-                  <th>Seleccionado</th>
-                  <th>Victorias</th>
-                  <th>Winrate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pokeStats.map(s => (
-                  <tr key={s.pokemon.name}>
-                    <td>
-                      <span className="table-poke-cell">
-                        <img
-                          src={pokemonIconUrl(s.pokemon.name)}
-                          alt={s.pokemon.name}
-                          className="poke-icon-sm"
-                          onError={hideOnError}
-                        />
-                        {s.pokemon.nickname || s.pokemon.name}
-                        {s.pokemon.item && (
-                          <img
-                            src={itemIconUrl(s.pokemon.item)}
-                            alt={s.pokemon.item}
-                            title={s.pokemon.item}
-                            className="item-icon-xs"
-                            onError={hideOnError}
-                          />
-                        )}
-                      </span>
-                    </td>
-                    <td>{s.times}</td>
-                    <td>{s.wins}</td>
-                    <td>
-                      {s.wr !== null ? (
-                        <span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span>
-                      ) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {leadStats.length > 0 && (
-              <>
-                <h3 className="subsection-title">Winrate por lead</h3>
+            <div className="stats-tables">
+              <div className="stats-table-block">
+                <h3 className="subsection-title">Selección por Pokemon</h3>
                 <table className="stats-table">
                   <thead>
                     <tr>
-                      <th>Lead</th>
-                      <th>Veces</th>
+                      <th>Pokemon</th>
+                      <th>Seleccionado</th>
                       <th>Victorias</th>
                       <th>Winrate</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {leadStats.map(s => (
-                      <tr key={s.lead}>
-                        <td>{s.lead}</td>
-                        <td>{s.total}</td>
+                    {pokeStats.map(s => (
+                      <tr key={s.name}>
+                        <td>
+                          <span className="table-poke-cell">
+                            <img
+                              src={pokemonIconUrl(s.pokemon?.name ?? s.name)}
+                              alt={s.name}
+                              className="poke-icon-sm"
+                              onError={hideOnError}
+                            />
+                            {s.name}
+                            {s.pokemon?.item && (
+                              <img
+                                src={itemIconUrl(s.pokemon.item)}
+                                alt={s.pokemon.item}
+                                title={s.pokemon.item}
+                                className="item-icon-xs"
+                                onError={hideOnError}
+                              />
+                            )}
+                          </span>
+                        </td>
+                        <td>{s.times}</td>
                         <td>{s.wins}</td>
-                        <td><span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span></td>
+                        <td>
+                          {s.wr !== null ? (
+                            <span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span>
+                          ) : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </>
-            )}
+              </div>
+
+              {leadStats.length > 0 && (
+                <div className="stats-table-block">
+                  <h3 className="subsection-title">Winrate por lead</h3>
+                  <table className="stats-table">
+                    <thead>
+                      <tr>
+                        <th>Lead</th>
+                        <th>Veces</th>
+                        <th>Victorias</th>
+                        <th>Winrate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leadStats.map(s => (
+                        <tr key={s.lead}>
+                          <td>{s.lead}</td>
+                          <td>{s.total}</td>
+                          <td>{s.wins}</td>
+                          <td><span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </>
         )}
       </section>
@@ -250,26 +295,73 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
           <h2 className="section-title">Historial de partidas</h2>
           <div className="io-actions">
             <button className="btn btn-secondary btn-sm" onClick={openImportMatch}>Importar partida</button>
-            {matches.length > 0 && <>
-              <button className="btn btn-secondary btn-sm" onClick={openImportHistory}>Importar historial</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => openExportHistory(matches)}>Exportar historial</button>
-            </>}
+            <button className="btn btn-secondary btn-sm" onClick={openImportHistory}>Importar historial</button>
+            {matches.length > 0 && <button className="btn btn-secondary btn-sm" onClick={() => openExportHistory(matches)}>Exportar historial</button>}
           </div>
         </div>
 
-        {matches.length === 0 ? (
-          <p className="text-muted">No hay partidas todavía.</p>
-        ) : (
-          <ul className="match-list">
-            {matches.map(m => (
+        <div className="history-filters">
+          <div className="filter-row">
+            <div className="filter-result-btns">
+              {(['win', 'loss', 'ongoing'] as const).map(r => (
+                <button
+                  key={r}
+                  className={`btn btn-sm btn-result-filter ${resultFilter === r ? 'active-' + r : ''}`}
+                  onClick={() => { setResultFilter(prev => prev === r ? '' : r); setPage(0) }}
+                >
+                  {r === 'win' ? 'Victoria' : r === 'loss' ? 'Derrota' : 'En juego'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-row">
+            <div className="filter-own-btns">
+              {allPokeNames.map(name => (
+                <button
+                  key={name}
+                  className={`poke-btn poke-btn-sm ${ownFilter === name ? 'selected' : ''}`}
+                  onClick={() => { setOwnFilter(prev => prev === name ? '' : name); setPage(0) }}
+                >
+                  <img src={pokemonIconUrl(name)} alt="" className="poke-icon-xs" onError={hideOnError} />
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-row">
+            <PokemonInput
+              value={rivalFilter}
+              placeholder="Filtrar por pokemon rival..."
+              allNames={pokemonNames}
+              onChange={v => { setRivalFilter(v); setPage(0) }}
+            />
+            {rivalFilter && <button className="btn btn-secondary btn-sm" onClick={() => { setRivalFilter(''); setPage(0) }}>✕</button>}
+          </div>
+        </div>
+
+        {(() => {
+          const rq = rivalFilter.trim().toLowerCase()
+          const oq = ownFilter.trim().toLowerCase()
+          const filtered = matches
+            .filter(m => !resultFilter || m.result === resultFilter)
+            .filter(m => !oq || m.selection.some(n => megaBase(n.toLowerCase()).includes(megaBase(oq))))
+            .filter(m => !rq || m.rivalTeam.some(n => n.toLowerCase().includes(rq)))
+          const PAGE_SIZE = 10
+          const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+          const safePage = Math.min(page, Math.max(0, totalPages - 1))
+          const paginated = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
+
+          if (matches.length === 0) return <p className="text-muted">No hay partidas todavía.</p>
+          if (filtered.length === 0) return <p className="text-muted">No hay partidas con esos filtros.</p>
+          return <>
+            <ul className="match-list">
+            {paginated.map(m => (
               <li key={m.id} className={`match-item match-item--${m.result}`}>
                 <div className="match-result-badge">{m.result === 'win' ? 'V' : m.result === 'loss' ? 'D' : '·'}</div>
                 <div className="match-info">
                   <div className="match-date">{formatDate(m.date)}</div>
                   {(() => {
-                    const ownBenched = team.pokemon
-                      .map(p => p.nickname || p.name)
-                      .filter(n => !m.selection.includes(n))
+                    const ownBenched = (m.teamRoster ?? []).filter(n => !m.selection.includes(n))
                     return (
                       <div className="match-detail">
                         <span className="match-label">Selección:</span>{' '}
@@ -354,7 +446,15 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
               </li>
             ))}
           </ul>
-        )}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button className="btn btn-secondary btn-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>← Anterior</button>
+              <span className="pagination-info">Página {safePage + 1} de {totalPages}</span>
+              <button className="btn btn-secondary btn-sm" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}>Siguiente →</button>
+            </div>
+          )}
+        </>
+        })()}
       </section>
 
       {modal && (

@@ -35,7 +35,8 @@ function parseBlock(block: string): PokemonSet | null {
   let item = ''
 
   const atSplit = firstLine.split('@')
-  const namePart = atSplit[0].trim()
+  // Eliminar marcadores de género (F) / (M) que Showdown añade al nombre
+  const namePart = atSplit[0].trim().replace(/\s*\([FM]\)\s*/g, ' ').trim()
   item = atSplit[1]?.trim() ?? ''
 
   // ¿Hay apodo? → "Apodo (Nombre)" o solo "Nombre"

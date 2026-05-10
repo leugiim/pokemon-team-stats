@@ -36,7 +36,7 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
     setTeam(t)
 
     if (matchId) {
-      const m = getMatch(matchId)
+      const m = getMatch(matchId, teamId)
       if (m) {
         setOriginalMatch(m)
         setResult(m.result)
@@ -116,6 +116,7 @@ export default function MatchForm({ teamId, matchId, onBack, onSaved }: Props) {
       teamId,
       date: originalMatch?.date ?? Date.now(),
       result,
+      teamRoster: originalMatch?.teamRoster ?? pokeNames,
       selection,
       lead,
       rivalTeam: rivalFilled,
