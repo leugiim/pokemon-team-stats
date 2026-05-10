@@ -1,6 +1,20 @@
+// Pokemon cuyo nombre lleva guion pero el sprite no lo incluye
+const NO_HYPHEN: Record<string, string> = {
+  'kommo-o': 'kommoo',
+  'hakamo-o': 'hakamoo',
+  'jangmo-o': 'jangmoo',
+  'wo-chien': 'wochien',
+  'chien-pao': 'chienpao',
+  'ting-lu': 'tinglu',
+  'chi-yu': 'chiyu',
+  'ho-oh': 'hooh',
+  'porygon-z': 'porygonz',
+}
+
 // Convierte nombre a ID de Showdown: minúsculas, conserva guiones, elimina el resto
 function toId(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/mega-/g, 'mega')
+  const lower = name.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/mega-/g, 'mega')
+  return NO_HYPHEN[lower] ?? lower
 }
 
 // GIF animado (~96px) — para las tarjetas de equipo
