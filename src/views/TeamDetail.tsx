@@ -150,7 +150,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
       wins: pokeWins,
       wr: inSelection.length > 0 ? Math.round((pokeWins / inSelection.length) * 100) : null,
     }
-  }).sort((a, b) => b.times - a.times)
+  }).sort((a, b) => (b.wr ?? -1) - (a.wr ?? -1))
 
   // Stats por lead (solo partidas decididas)
   const leadMap = new Map<string, { wins: number; total: number }>()
@@ -165,7 +165,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   })
   const leadStats = [...leadMap.entries()]
     .map(([lead, s]) => ({ lead, ...s, wr: Math.round((s.wins / s.total) * 100) }))
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => b.wr - a.wr)
 
   // Top 10 pokemon rivales con más winrate contra ti (partidas decididas)
   const rivalPokeMap = new Map<string, { wins: number; total: number }>()
@@ -325,7 +325,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                           </td>
                           <td>{s.total}</td>
                           <td>{s.wins}</td>
-                          <td><span className={s.wr >= 50 ? 'loss' : 'win'}>{s.wr}%</span></td>
+                          <td><span className="win">{s.wr}%</span></td>
                         </tr>
                       ))}
                     </tbody>
