@@ -513,7 +513,7 @@ body {
   .pokemon-grid { grid-template-columns: repeat(6, 1fr); }
 
   /* Tablas de stats lado a lado */
-  .stats-tables { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; align-items: start; }
+  .stats-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
   .stats-table-block { display: flex; flex-direction: column; gap: 0.5rem; }
 
   /* Historial: 2 partidas por fila */

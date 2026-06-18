@@ -185,6 +185,19 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
     .map(([name, s]) => ({ name, ...s, wr: Math.round((s.wins / s.total) * 100) }))
     .sort((a, b) => b.wr - a.wr || b.total - a.total)
 
+  // Top 10 leads enemigas con más winrate contra ti (partidas decididas)
+  const enemyLeadMap = new Map<string, { wins: number; total: number }>()
+  decided.forEach(m => {
+    if (m.rivalLead.length !== 2) return
+    const rivalWon = m.result === 'loss'
+    const key = [...m.rivalLead].sort().join(' + ')
+    const cur = enemyLeadMap.get(key) ?? { wins: 0, total: 0 }
+    enemyLeadMap.set(key, { wins: cur.wins + (rivalWon ? 1 : 0), total: cur.total + 1 })
+  })
+  const enemyLeadStats = [...enemyLeadMap.entries()]
+    .map(([lead, s]) => ({ lead, ...s, wr: Math.round((s.wins / s.total) * 100) }))
+    .sort((a, b) => b.wr - a.wr || b.total - a.total)
+
   return (
     <div className="view">
       <header className="view-header">
@@ -348,6 +361,51 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                                 <span className="table-poke-cell">
                                   <img src={pokemonIconUrl(s.name)} alt={s.name} className="poke-icon-sm" onError={hideOnError} />
                                   {s.name}
+                                </span>
+                              </td>
+                              <td>{s.total}</td>
+                              <td>{s.wins}</td>
+                              <td><span className="win">{s.wr}%</span></td>
+                            </tr>
+                          ))
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
+
+              {enemyLeadStats.length > 0 && (() => {
+                const q = enemyNameFilter.toLowerCase()
+                const filtered = enemyLeadStats
+                  .filter(s => s.total >= enemyMinMatches)
+                  .filter(s => !q || s.lead.toLowerCase().split(' + ').some(n => n.includes(q)))
+                  .slice(0, 10)
+                return (
+                  <div className="stats-table-block">
+                    <h3 className="subsection-title">Top leads enemigas contra ti</h3>
+                    <table className="stats-table">
+                      <thead>
+                        <tr>
+                          <th>Lead</th>
+                          <th>Veces</th>
+                          <th>Derrotas</th>
+                          <th>Winrate rival</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.length === 0
+                          ? <tr><td colSpan={4} className="text-muted">Sin resultados.</td></tr>
+                          : filtered.map(s => (
+                            <tr key={s.lead}>
+                              <td>
+                                <span className="table-poke-cell">
+                                  {s.lead.split(' + ').map(name => (
+                                    <span key={name} className="table-poke-cell">
+                                      <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-sm" onError={hideOnError} />
+                                      {name}
+                                    </span>
+                                  ))}
                                 </span>
                               </td>
                               <td>{s.total}</td>
