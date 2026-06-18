@@ -35,5 +35,13 @@ export function pokemonIconUrl(name: string): string {
 
 // Icono de objeto (24px)
 export function itemIconUrl(item: string): string {
-  return `https://play.pokemonshowdown.com/sprites/itemicons/${toItemId(item)}.png`
+  const id = toItemId(item)
+  const baseId = id.replace(/-[xyz]$/, '')
+  if (baseId.endsWith('ite') && baseId !== 'eviolite') return megaIconUrl()
+  return `https://play.pokemonshowdown.com/sprites/itemicons/${id}.png`
+}
+
+// Icono de megapiedra (24px)
+export function megaIconUrl(): string {
+  return `https://play.pokemonshowdown.com/sprites/misc/mega.png`
 }

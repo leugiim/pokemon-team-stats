@@ -1,5 +1,5 @@
 import { PokemonSet } from '../types'
-import { pokemonSpriteUrl, itemIconUrl } from '../sprites'
+import { pokemonSpriteUrl, pokemonIconUrl, itemIconUrl } from '../sprites'
 
 interface Props {
   pokemon: PokemonSet
@@ -7,6 +7,13 @@ interface Props {
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = 'none'
+}
+
+function spriteOnError(name: string) {
+  return (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.onerror = null
+    e.currentTarget.src = pokemonIconUrl(name)
+  }
 }
 
 export default function PokemonCard({ pokemon: p }: Props) {
@@ -17,7 +24,7 @@ export default function PokemonCard({ pokemon: p }: Props) {
           src={pokemonSpriteUrl(p.name)}
           alt={p.name}
           className="pokemon-sprite-gif"
-          onError={hideOnError}
+          onError={spriteOnError(p.name)}
         />
       </div>
       <div className="pokemon-card-body">
