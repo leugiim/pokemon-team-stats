@@ -319,7 +319,7 @@ body {
 /* Section header con acciones */
 .section-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .section-header .section-title { flex: 1; }
-.io-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.io-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-left: auto; }
 .hidden-input { display: none; }
 .match-actions { display: flex; gap: 0.3rem; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
 

@@ -369,14 +369,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
 
       {/* Historial */}
       <section className="section">
-        <div className="section-header">
-          <h2 className="section-title">Historial de partidas</h2>
-          <div className="io-actions">
-            <button className="btn btn-secondary btn-sm" onClick={openImportMatch}>Importar partida</button>
-            <button className="btn btn-secondary btn-sm" onClick={openImportHistory}>Importar historial</button>
-            {matches.length > 0 && <button className="btn btn-secondary btn-sm" onClick={() => openExportHistory(matches)}>Exportar historial</button>}
-          </div>
-        </div>
+        <h2 className="section-title">Historial de partidas</h2>
 
         <div className="history-filters">
           <div className="filter-row">
@@ -414,6 +407,11 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
               onChange={v => { setRivalFilter(v); setPage(0) }}
             />
             {rivalFilter && <button className="btn btn-secondary btn-sm" onClick={() => { setRivalFilter(''); setPage(0) }}>✕</button>}
+            <div className="io-actions">
+              <button className="btn btn-secondary btn-sm" onClick={openImportMatch}>Importar partida</button>
+              <button className="btn btn-secondary btn-sm" onClick={openImportHistory}>Importar historial</button>
+              {matches.length > 0 && <button className="btn btn-secondary btn-sm" onClick={() => openExportHistory(matches)}>Exportar historial</button>}
+            </div>
           </div>
         </div>
 
