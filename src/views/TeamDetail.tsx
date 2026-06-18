@@ -167,6 +167,23 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
     .map(([lead, s]) => ({ lead, ...s, wr: Math.round((s.wins / s.total) * 100) }))
     .sort((a, b) => b.total - a.total)
 
+  // Top 10 pokemon rivales con más winrate contra ti (partidas decididas)
+  const rivalPokeMap = new Map<string, { wins: number; total: number }>()
+  decided.forEach(m => {
+    const rivalWon = m.result === 'loss'
+    const seen = new Set<string>()
+    m.rivalTeam.forEach(name => {
+      if (seen.has(name)) return
+      seen.add(name)
+      const cur = rivalPokeMap.get(name) ?? { wins: 0, total: 0 }
+      rivalPokeMap.set(name, { wins: cur.wins + (rivalWon ? 1 : 0), total: cur.total + 1 })
+    })
+  })
+  const enemyStats = [...rivalPokeMap.entries()]
+    .map(([name, s]) => ({ name, ...s, wr: Math.round((s.wins / s.total) * 100) }))
+    .sort((a, b) => b.wr - a.wr || b.total - a.total)
+    .slice(0, 10)
+
   return (
     <div className="view">
       <header className="view-header">
@@ -284,6 +301,38 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                   </table>
                 </div>
               )}
+
+              {enemyStats.length > 0 && (
+                <div className="stats-table-block">
+                  <h3 className="subsection-title">Top rivales contra ti</h3>
+                  <table className="stats-table">
+                    <thead>
+                      <tr>
+                        <th>Pokemon</th>
+                        <th>Apariciones</th>
+                        <th>Derrotas</th>
+                        <th>Winrate rival</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enemyStats.map(s => (
+                        <tr key={s.name}>
+                          <td>
+                            <span className="table-poke-cell">
+                              <img src={pokemonIconUrl(s.name)} alt={s.name} className="poke-icon-sm" onError={hideOnError} />
+                              {s.name}
+                            </span>
+                          </td>
+                          <td>{s.total}</td>
+                          <td>{s.wins}</td>
+                          <td><span className={s.wr >= 50 ? 'loss' : 'win'}>{s.wr}%</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
             </div>
           </>
         )}
@@ -355,105 +404,105 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
           if (filtered.length === 0) return <p className="text-muted">No hay partidas con esos filtros.</p>
           return <>
             <ul className="match-list">
-            {paginated.map(m => (
-              <li key={m.id} className={`match-item match-item--${m.result}`}>
-                <div className="match-result-badge">{m.result === 'win' ? 'V' : m.result === 'loss' ? 'D' : '·'}</div>
-                <div className="match-info">
-                  <div className="match-date">{formatDate(m.date)}</div>
-                  {(() => {
-                    const ownBenched = (m.teamRoster ?? []).filter(n => !m.selection.includes(n))
-                    return (
-                      <div className="match-detail">
-                        <span className="match-label">Selección:</span>{' '}
-                        <span className="match-poke-row">
-                          {m.selection.map(name => (
-                            <span key={name} title={name} className={`match-poke-icon ${m.lead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
-                              <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
-                            </span>
-                          ))}
-                          {ownBenched.length > 0 && (
-                            <>
-                              <span className="match-bench-sep" />
-                              {ownBenched.map(name => (
-                                <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
-                                  <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
-                                </span>
-                              ))}
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    )
-                  })()}
-                  {m.rivalSelection.length > 0 && (() => {
-                    const benched = m.rivalTeam.filter(n => !m.rivalSelection.includes(n))
-                    return (
+              {paginated.map(m => (
+                <li key={m.id} className={`match-item match-item--${m.result}`}>
+                  <div className="match-result-badge">{m.result === 'win' ? 'V' : m.result === 'loss' ? 'D' : '·'}</div>
+                  <div className="match-info">
+                    <div className="match-date">{formatDate(m.date)}</div>
+                    {(() => {
+                      const ownBenched = (m.teamRoster ?? []).filter(n => !m.selection.includes(n))
+                      return (
+                        <div className="match-detail">
+                          <span className="match-label">Selección:</span>{' '}
+                          <span className="match-poke-row">
+                            {m.selection.map(name => (
+                              <span key={name} title={name} className={`match-poke-icon ${m.lead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
+                                <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                              </span>
+                            ))}
+                            {ownBenched.length > 0 && (
+                              <>
+                                <span className="match-bench-sep" />
+                                {ownBenched.map(name => (
+                                  <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
+                                    <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                                  </span>
+                                ))}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                    {m.rivalSelection.length > 0 && (() => {
+                      const benched = m.rivalTeam.filter(n => !m.rivalSelection.includes(n))
+                      return (
+                        <div className="match-detail">
+                          <span className="match-label">Rival:</span>{' '}
+                          <span className="match-poke-row">
+                            {m.rivalSelection.map(name => (
+                              <span key={name} title={name} className={`match-poke-icon ${m.rivalLead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
+                                <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                              </span>
+                            ))}
+                            {benched.length > 0 && (
+                              <>
+                                <span className="match-bench-sep" />
+                                {benched.map(name => (
+                                  <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
+                                    <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
+                                  </span>
+                                ))}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                    {m.rivalTeam.length > 0 && m.rivalSelection.length === 0 && (
                       <div className="match-detail">
                         <span className="match-label">Rival:</span>{' '}
                         <span className="match-poke-row">
-                          {m.rivalSelection.map(name => (
-                            <span key={name} title={name} className={`match-poke-icon ${m.rivalLead.includes(name) ? 'match-poke-icon--lead' : ''}`}>
+                          {m.rivalTeam.map(name => (
+                            <span key={name} title={name} className="match-poke-icon">
                               <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
                             </span>
                           ))}
-                          {benched.length > 0 && (
-                            <>
-                              <span className="match-bench-sep" />
-                              {benched.map(name => (
-                                <span key={name} title={name} className="match-poke-icon match-poke-icon--benched">
-                                  <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
-                                </span>
-                              ))}
-                            </>
-                          )}
                         </span>
                       </div>
-                    )
-                  })()}
-                  {m.rivalTeam.length > 0 && m.rivalSelection.length === 0 && (
-                    <div className="match-detail">
-                      <span className="match-label">Rival:</span>{' '}
-                      <span className="match-poke-row">
-                        {m.rivalTeam.map(name => (
-                          <span key={name} title={name} className="match-poke-icon">
-                            <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-md" onError={hideOnError} />
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                  {m.notes && <div className="match-notes">{m.notes}</div>}
-                </div>
-                <div className="match-actions">
-                  <button className="btn btn-icon btn-secondary" title="Editar" onClick={() => onEditMatch(m.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                  </button>
-                  <button className="btn btn-icon btn-secondary" title="Exportar partida" onClick={() => openExportMatch(m)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                    </svg>
-                  </button>
-                  <button className="btn btn-icon btn-danger" title="Eliminar" onClick={() => handleDeleteMatch(m.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button className="btn btn-secondary btn-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>← Anterior</button>
-              <span className="pagination-info">Página {safePage + 1} de {totalPages}</span>
-              <button className="btn btn-secondary btn-sm" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}>Siguiente →</button>
-            </div>
-          )}
-        </>
+                    )}
+                    {m.notes && <div className="match-notes">{m.notes}</div>}
+                  </div>
+                  <div className="match-actions">
+                    <button className="btn btn-icon btn-secondary" title="Editar" onClick={() => onEditMatch(m.id)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                    <button className="btn btn-icon btn-secondary" title="Exportar partida" onClick={() => openExportMatch(m)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                    </button>
+                    <button className="btn btn-icon btn-danger" title="Eliminar" onClick={() => handleDeleteMatch(m.id)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button className="btn btn-secondary btn-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>← Anterior</button>
+                <span className="pagination-info">Página {safePage + 1} de {totalPages}</span>
+                <button className="btn btn-secondary btn-sm" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)}>Siguiente →</button>
+              </div>
+            )}
+          </>
         })()}
       </section>
 
