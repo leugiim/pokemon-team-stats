@@ -46,6 +46,8 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   const [resultFilter, setResultFilter] = useState<'win' | 'loss' | 'ongoing' | ''>('')
   const [page, setPage] = useState(0)
   const [pokemonNames, setPokemonNames] = useState<string[]>([])
+  const [enemyNameFilter, setEnemyNameFilter] = useState('')
+  const [enemyMinMatches, setEnemyMinMatches] = useState(1)
 
   function reload() {
     const t = getTeams().find(t => t.id === teamId) ?? null
@@ -182,7 +184,6 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   const enemyStats = [...rivalPokeMap.entries()]
     .map(([name, s]) => ({ name, ...s, wr: Math.round((s.wins / s.total) * 100) }))
     .sort((a, b) => b.wr - a.wr || b.total - a.total)
-    .slice(0, 10)
 
   return (
     <div className="view">
@@ -302,36 +303,64 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                 </div>
               )}
 
-              {enemyStats.length > 0 && (
-                <div className="stats-table-block">
-                  <h3 className="subsection-title">Top rivales contra ti</h3>
-                  <table className="stats-table">
-                    <thead>
-                      <tr>
-                        <th>Pokemon</th>
-                        <th>Apariciones</th>
-                        <th>Derrotas</th>
-                        <th>Winrate rival</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {enemyStats.map(s => (
-                        <tr key={s.name}>
-                          <td>
-                            <span className="table-poke-cell">
-                              <img src={pokemonIconUrl(s.name)} alt={s.name} className="poke-icon-sm" onError={hideOnError} />
-                              {s.name}
-                            </span>
-                          </td>
-                          <td>{s.total}</td>
-                          <td>{s.wins}</td>
-                          <td><span className="win">{s.wr}%</span></td>
+              {enemyStats.length > 0 && (() => {
+                const filtered = enemyStats
+                  .filter(s => s.total >= enemyMinMatches)
+                  .filter(s => !enemyNameFilter || s.name.toLowerCase().includes(enemyNameFilter.toLowerCase()))
+                  .slice(0, 10)
+                return (
+                  <div className="stats-table-block">
+                    <h3 className="subsection-title">Top rivales contra ti</h3>
+                    <div className="table-filters">
+                      <input
+                        className="input-sm"
+                        type="text"
+                        placeholder="Buscar pokemon..."
+                        value={enemyNameFilter}
+                        onChange={e => setEnemyNameFilter(e.target.value)}
+                      />
+                      <label className="filter-label">
+                        Mín. partidas:
+                        <input
+                          className="input-sm input-number"
+                          type="number"
+                          min={1}
+                          value={enemyMinMatches}
+                          onChange={e => setEnemyMinMatches(Math.max(1, Number(e.target.value)))}
+                        />
+                      </label>
+                    </div>
+                    <table className="stats-table">
+                      <thead>
+                        <tr>
+                          <th>Pokemon</th>
+                          <th>Apariciones</th>
+                          <th>Derrotas</th>
+                          <th>Winrate rival</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {filtered.length === 0
+                          ? <tr><td colSpan={4} className="text-muted">Sin resultados.</td></tr>
+                          : filtered.map(s => (
+                            <tr key={s.name}>
+                              <td>
+                                <span className="table-poke-cell">
+                                  <img src={pokemonIconUrl(s.name)} alt={s.name} className="poke-icon-sm" onError={hideOnError} />
+                                  {s.name}
+                                </span>
+                              </td>
+                              <td>{s.total}</td>
+                              <td>{s.wins}</td>
+                              <td><span className="win">{s.wr}%</span></td>
+                            </tr>
+                          ))
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
 
             </div>
           </>

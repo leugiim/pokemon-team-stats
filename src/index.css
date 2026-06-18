@@ -343,6 +343,10 @@ body {
 
 .stats-tables { display: flex; flex-direction: column; gap: 1.5rem; }
 .stats-table-block { display: flex; flex-direction: column; gap: 0.5rem; }
+.table-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.filter-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+.input-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-input, var(--bg-card)); color: var(--text); }
+.input-number { width: 4rem; }
 .stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .stats-table th, .stats-table td {
   padding: 0.5rem 0.75rem;
@@ -509,7 +513,7 @@ body {
   .pokemon-grid { grid-template-columns: repeat(6, 1fr); }
 
   /* Tablas de stats lado a lado */
-  .stats-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .stats-tables { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; align-items: start; }
   .stats-table-block { display: flex; flex-direction: column; gap: 0.5rem; }
 
   /* Historial: 2 partidas por fila */
