@@ -305,7 +305,16 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                     <tbody>
                       {leadStats.map(s => (
                         <tr key={s.lead}>
-                          <td>{s.lead}</td>
+                          <td>
+                            <span className="table-poke-cell">
+                              {s.lead.split(' + ').map(name => (
+                                <span key={name} className="table-poke-cell">
+                                  <img src={pokemonIconUrl(name)} alt={name} className="poke-icon-sm" onError={hideOnError} />
+                                  {name}
+                                </span>
+                              ))}
+                            </span>
+                          </td>
                           <td>{s.total}</td>
                           <td>{s.wins}</td>
                           <td><span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span></td>
@@ -365,7 +374,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                               </td>
                               <td>{s.total}</td>
                               <td>{s.wins}</td>
-                              <td><span className="win">{s.wr}%</span></td>
+                              <td><span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span></td>
                             </tr>
                           ))
                         }
@@ -410,7 +419,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
                               </td>
                               <td>{s.total}</td>
                               <td>{s.wins}</td>
-                              <td><span className="win">{s.wr}%</span></td>
+                              <td><span className={s.wr >= 50 ? 'win' : 'loss'}>{s.wr}%</span></td>
                             </tr>
                           ))
                         }
