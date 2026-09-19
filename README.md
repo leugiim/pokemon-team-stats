@@ -1,5 +1,7 @@
 # Pokemon Team Stats
 
+> **Este proyecto se ha integrado en [pokemon-tools](https://github.com/leugiim/pokemon-tools)** (<https://vgc-tools.leugiim.es>), junto a la calculadora de daño, y ya no se mantiene aquí. Para llevarte tus equipos y partidas, mira la sección [«Moving your data from the old planner»](https://github.com/leugiim/pokemon-tools#moving-your-data-from-the-old-planner) de su README: los datos viven en el `localStorage` de la dirección donde ejecutabas esta app, así que conviene hacerlo antes de dejar de usarla.
+
 Aplicación web para registrar y analizar estadísticas de partidas de Pokemon VGC (Video Game Championships), centrada en el formato **Pokemon Champions**.
 
 ## Descripcion
