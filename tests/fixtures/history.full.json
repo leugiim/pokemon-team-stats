@@ -1,0 +1,4 @@
+[
+  {"date": 1700000000000, "result": "win", "teamRoster": ["Charizard", "Sparky", "Froslass-Mega"], "selection": ["Charizard", "Sparky", "Froslass-Mega"], "lead": ["Charizard", "Sparky"], "rivalTeam": ["Incineroar", "Rillaboom", "Urshifu-Rapid-Strike"], "rivalSelection": ["Incineroar", "Rillaboom", "Urshifu-Rapid-Strike"], "rivalLead": ["Incineroar", "Rillaboom"], "notes": "full format"},
+  {"date": 1700000100000, "result": "loss", "teamRoster": ["Charizard", "Sparky", "Froslass-Mega"], "selection": ["Charizard-Mega-Y", "Sparky"], "lead": ["Charizard-Mega-Y", "Sparky"], "rivalTeam": ["Incineroar", "Flutter Mane"], "rivalSelection": ["Incineroar", "Flutter Mane"], "rivalLead": ["Rillaboom", "Incineroar"], "notes": ""}
+]

@@ -1,0 +1,30 @@
+Charizard @ Charizardite Y
+Ability: Blaze
+Level: 50
+Shiny: Yes
+Tera Type: Fire
+EVs: 4 HP / 252 SpA / 252 Spe
+Timid Nature
+IVs: 0 Atk
+- Heat Wave
+- Solar Beam
+- Protect
+- Air Slash
+
+Sparky (Rotom-Wash) (F) @ Sitrus Berry
+Ability: Levitate
+EVs: 252 HP / 4 Def / 252 SpD
+Calm Nature
+- Hydro Pump
+- Volt Switch
+- Will-O-Wisp
+- Protect
+
+Froslass-Mega @ Froslassite
+Ability: Snow Warning
+EVs: 252 SpA / 252 Spe
+Timid Nature
+- Blizzard
+- Shadow Ball
+- Icy Wind
+- Protect
