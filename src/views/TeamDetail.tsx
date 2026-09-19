@@ -7,6 +7,7 @@ import { matchToJson, historyToJson, jsonToMatch, jsonToHistory } from '../utils
 import IOModal from '../components/IOModal'
 import PokemonInput from '../components/PokemonInput'
 import { getPokemonNames } from '../utils/pokemonNames'
+import { computeTeamStats, filterEnemyStats, filterEnemyLeadStats, filterMatches, ResultFilter } from '../stats'
 
 function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = 'none'
@@ -18,12 +19,6 @@ interface Props {
   onEdit: () => void
   onAddMatch: () => void
   onEditMatch: (matchId: string) => void
-}
-
-function winrate(matches: Match[]) {
-  const decided = matches.filter(m => m.result !== 'ongoing')
-  if (decided.length === 0) return null
-  return Math.round((decided.filter(m => m.result === 'win').length / decided.length) * 100)
 }
 
 function formatDate(ts: number) {
@@ -43,7 +38,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
   const [modal, setModal] = useState<ModalState>(null)
   const [rivalFilter, setRivalFilter] = useState('')
   const [ownFilter, setOwnFilter] = useState('')
-  const [resultFilter, setResultFilter] = useState<'win' | 'loss' | 'ongoing' | ''>('')
+  const [resultFilter, setResultFilter] = useState<ResultFilter>('')
   const [page, setPage] = useState(0)
   const [pokemonNames, setPokemonNames] = useState<string[]>([])
   const [enemyNameFilter, setEnemyNameFilter] = useState('')
@@ -112,91 +107,8 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
 
   if (!team) return <div className="view"><p>Equipo no encontrado.</p></div>
 
-  const wr = winrate(matches)
-  const decided = matches.filter(m => m.result !== 'ongoing')
-  const total = decided.length
-  const wins = decided.filter(m => m.result === 'win').length
-
-  // Normaliza Mega: "Charizard-Mega-X" → "Charizard", "Froslass-Mega" → "Froslass"
-  function megaBase(name: string) {
-    return name.replace(/-Mega(-[A-Za-z])?$/i, '')
-  }
-
-  // Todos los pokemon que alguna vez estuvieron en el equipo (actuales + históricos de partidas)
-  const currentPokeMap = new Map(team.pokemon.map(p => [p.nickname || p.name, p]))
-  const allNamesRaw = [...new Set([
-    ...team.pokemon.map(p => p.nickname || p.name),
-    ...matches.flatMap(m => m.selection),
-  ])]
-
-  // Deduplicar agrupando base + mega como uno solo.
-  // El nombre de display preferido es el del equipo actual; si no, el primero que aparezca.
-  const baseDisplayMap = new Map<string, string>() // base → display name
-  allNamesRaw.forEach(name => {
-    const base = megaBase(name)
-    if (!baseDisplayMap.has(base) || currentPokeMap.has(name)) {
-      baseDisplayMap.set(base, name)
-    }
-  })
-  const allPokeNames = [...baseDisplayMap.values()]
-
-  // Stats por pokemon en selección (solo partidas decididas), agrupando Mega con base
-  const pokeStats = [...baseDisplayMap.entries()].map(([base, displayName]) => {
-    const pokemon = currentPokeMap.get(displayName) ?? null
-    const inSelection = decided.filter(m => m.selection.some(n => megaBase(n) === base))
-    const pokeWins = inSelection.filter(m => m.result === 'win').length
-    return {
-      name: displayName,
-      pokemon,
-      times: inSelection.length,
-      wins: pokeWins,
-      wr: inSelection.length > 0 ? Math.round((pokeWins / inSelection.length) * 100) : null,
-    }
-  }).sort((a, b) => (b.wr ?? -1) - (a.wr ?? -1))
-
-  // Stats por lead (solo partidas decididas)
-  const leadMap = new Map<string, { wins: number; total: number }>()
-  decided.forEach(m => {
-    if (m.lead.length !== 2) return
-    const key = [...m.lead].sort().join(' + ')
-    const cur = leadMap.get(key) ?? { wins: 0, total: 0 }
-    leadMap.set(key, {
-      wins: cur.wins + (m.result === 'win' ? 1 : 0),
-      total: cur.total + 1,
-    })
-  })
-  const leadStats = [...leadMap.entries()]
-    .map(([lead, s]) => ({ lead, ...s, wr: Math.round((s.wins / s.total) * 100) }))
-    .sort((a, b) => b.wr - a.wr)
-
-  // Top 10 pokemon rivales con más winrate contra ti (partidas decididas)
-  const rivalPokeMap = new Map<string, { wins: number; total: number }>()
-  decided.forEach(m => {
-    const rivalWon = m.result === 'loss'
-    const seen = new Set<string>()
-    m.rivalTeam.forEach(name => {
-      if (seen.has(name)) return
-      seen.add(name)
-      const cur = rivalPokeMap.get(name) ?? { wins: 0, total: 0 }
-      rivalPokeMap.set(name, { wins: cur.wins + (rivalWon ? 1 : 0), total: cur.total + 1 })
-    })
-  })
-  const enemyStats = [...rivalPokeMap.entries()]
-    .map(([name, s]) => ({ name, ...s, wr: Math.round((s.wins / s.total) * 100) }))
-    .sort((a, b) => b.wr - a.wr || b.total - a.total)
-
-  // Top 10 leads enemigas con más winrate contra ti (partidas decididas)
-  const enemyLeadMap = new Map<string, { wins: number; total: number }>()
-  decided.forEach(m => {
-    if (m.rivalLead.length !== 2) return
-    const rivalWon = m.result === 'loss'
-    const key = [...m.rivalLead].sort().join(' + ')
-    const cur = enemyLeadMap.get(key) ?? { wins: 0, total: 0 }
-    enemyLeadMap.set(key, { wins: cur.wins + (rivalWon ? 1 : 0), total: cur.total + 1 })
-  })
-  const enemyLeadStats = [...enemyLeadMap.entries()]
-    .map(([lead, s]) => ({ lead, ...s, wr: Math.round((s.wins / s.total) * 100) }))
-    .sort((a, b) => b.wr - a.wr || b.total - a.total)
+  const { total, wins, wr, allPokeNames, pokeStats, leadStats, enemyStats, enemyLeadStats } =
+    computeTeamStats(team, matches)
 
   return (
     <div className="view">
@@ -326,10 +238,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
               )}
 
               {enemyStats.length > 0 && (() => {
-                const filtered = enemyStats
-                  .filter(s => s.total >= enemyMinMatches)
-                  .filter(s => !enemyNameFilter || s.name.toLowerCase().includes(enemyNameFilter.toLowerCase()))
-                  .slice(0, 10)
+                const filtered = filterEnemyStats(enemyStats, enemyNameFilter, enemyMinMatches).slice(0, 10)
                 return (
                   <div className="stats-table-block">
                     <h3 className="subsection-title">Top rivales contra ti</h3>
@@ -385,11 +294,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
               })()}
 
               {enemyLeadStats.length > 0 && (() => {
-                const q = enemyNameFilter.toLowerCase()
-                const filtered = enemyLeadStats
-                  .filter(s => s.total >= enemyMinMatches)
-                  .filter(s => !q || s.lead.toLowerCase().split(' + ').some(n => n.includes(q)))
-                  .slice(0, 10)
+                const filtered = filterEnemyLeadStats(enemyLeadStats, enemyNameFilter, enemyMinMatches).slice(0, 10)
                 return (
                   <div className="stats-table-block">
                     <h3 className="subsection-title">Top leads enemigas contra ti</h3>
@@ -483,12 +388,7 @@ export default function TeamDetail({ teamId, onBack, onEdit, onAddMatch, onEditM
         </div>
 
         {(() => {
-          const rq = rivalFilter.trim().toLowerCase()
-          const oq = ownFilter.trim().toLowerCase()
-          const filtered = matches
-            .filter(m => !resultFilter || m.result === resultFilter)
-            .filter(m => !oq || m.selection.some(n => megaBase(n.toLowerCase()).includes(megaBase(oq))))
-            .filter(m => !rq || m.rivalTeam.some(n => n.toLowerCase().includes(rq)))
+          const filtered = filterMatches(matches, { result: resultFilter, own: ownFilter, rival: rivalFilter })
           const PAGE_SIZE = 10
           const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
           const safePage = Math.min(page, Math.max(0, totalPages - 1))
